@@ -59,10 +59,15 @@
   if (param("src")) $("ask-src").hidden = true;
   if (param("house")) $("ask-house").hidden = true;
   if (param("area")) $("ask-area").hidden = true;
+  // 担当スタッフ：自由記入ではなく、選ぶ形。リンクに staff があれば聞かない。一覧は受け口（名寄せ表）から取る
   const sb = $("staffbox");
   if (param("staff")) $("ask-staff").hidden = true;
-  else if ((C.STAFF_LIST || []).length) { const s = document.createElement("select"); s.id = "staff"; sel(s, C.STAFF_LIST); sb.appendChild(s); }
-  else { const i = document.createElement("input"); i.type = "text"; i.id = "staff"; i.maxLength = 30; i.placeholder = "（わかれば）お名前"; i.style.cssText = "width:100%;font:inherit;border:2px solid var(--line);border-radius:12px;padding:12px;background:var(--card);color:var(--ink)"; sb.appendChild(i); }
+  else {
+    const s = document.createElement("select"); s.id = "staff"; sel(s, []); sb.appendChild(s); $("ask-staff").hidden = true;
+    const fill = list => { if (!list.length) return; sel(s, list.map(x => x.name)); [...s.options].slice(1).forEach((o, i) => { o.value = list[i].id; }); s.options[0].textContent = "（わからない・選ばない）"; $("ask-staff").hidden = false; };
+    if ((C.STAFF_LIST || []).length) fill(C.STAFF_LIST.map((n, i) => ({ id: "S" + String(i + 1).padStart(3, "0"), name: n })));
+    else if (C.GAS_URL) fetch(C.GAS_URL + "?action=staff").then(r => r.json()).then(j => fill((j && j.staff) || [])).catch(() => {});
+  }
   $("comment").oninput = e => { $("cnt").textContent = e.target.value.length; };
 
   function progress() {
