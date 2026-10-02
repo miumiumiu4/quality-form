@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>作業後のご確認アンケート</title><meta name="robots" content="noindex">
+<link rel="stylesheet" href="form.css"></head>
+<body>
+<header class="top"><div class="wrap"><div class="brand" id="brand"></div><div class="prog" aria-hidden="true"><i id="progbar"></i></div></div></header>
+<main class="wrap" id="app">
+  <section id="intro" class="card hero"><h1>作業後のご確認アンケート</h1>
+    <p>作業の仕上がりを、一緒にご確認ください。<b>約2分</b>で終わります。いただいたご回答は、サービス向上のために使います。</p>
+    <p class="note" id="demo" hidden>（デモ表示です。送信しても記録されません）</p></section>
+  <form id="f" novalidate autocomplete="off">
+    <input type="text" name="website" id="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0">
+    <section class="card" id="s-check"><h2><span class="no">1</span>作業の確認</h2>
+      <p class="sub">一つずつ、当てはまるものを押してください。</p>
+      <div class="quick"><button type="button" id="allok" class="ghost">すべて問題なし（あとから直せます）</button></div>
+      <div id="items"></div></section>
+    <section class="card" id="s-score"><h2><span class="no">2</span>全体の気持ち</h2>
+      <fieldset class="q" data-err="star"><legend>今日の作業は、全体としていかがでしたか？<em>必須</em></legend><div class="stars" id="stars" role="radiogroup" aria-label="総合の満足度"></div><div class="stars-l"><span>不満</span><span>満足</span></div></fieldset>
+      <fieldset class="q" data-err="nps"><legend>ご家族やお友達に、このサービスをすすめたい気持ちは、どのくらいですか？<em>必須</em></legend><div class="nps" id="nps" role="radiogroup" aria-label="すすめたい気持ち（0〜10）"></div><div class="stars-l"><span>まったくすすめない</span><span>ぜひすすめる</span></div></fieldset>
+      <fieldset class="q"><legend>気になった点があれば、お選びください（いくつでも）</legend><div class="chips" id="concerns"></div></fieldset></section>
+    <section class="card" id="s-you"><h2><span class="no">3</span>あなたについて<span class="opt">任意</span></h2>
+      <p class="sub">今後のサービス改善に使います。答えたくない質問は、飛ばして大丈夫です。</p>
+      <div id="ask-src" class="q"><label class="lab" for="src">どこからご予約されましたか？</label><select id="src"></select></div>
+      <div id="ask-staff" class="q"><label class="lab" for="staff">担当スタッフ</label><div id="staffbox"></div></div>
+      <div id="ask-house" class="q"><label class="lab" for="house">お住まいの種類</label><select id="house"></select></div>
+      <div id="ask-area" class="q"><label class="lab" for="area">お住まいの都道府県</label><select id="area"></select></div>
+      <fieldset class="q"><legend>エアコンクリーニングは、今回が…</legend><div class="chips single" id="visit"></div></fieldset>
+      <fieldset class="q"><legend>依頼したきっかけ（いくつでも）</legend><div class="chips" id="reasons"></div></fieldset>
+      <fieldset class="q"><legend>ご家庭に当てはまるもの</legend><div class="chips" id="family"></div></fieldset>
+      <div class="q"><label class="lab" for="age">年代</label><select id="age"></select></div>
+      <div class="q"><label class="lab" for="next">次のお掃除のお知らせ</label><select id="next"></select></div>
+      <div class="q" id="ask-email"><label class="lab" for="email">お知らせの送り先メール（任意）</label><input type="email" id="email" inputmode="email" placeholder="example@mail.com" autocomplete="email"><p class="note">入力すると、お知らせのご案内にだけ使います。</p></div></section>
+    <section class="card" id="s-text"><h2><span class="no">4</span>ひとこと<span class="opt">任意</span></h2>
+      <label class="lab" for="comment">うれしかったこと、気になったこと、スタッフへのメッセージなど、ご自由に。</label>
+      <textarea id="comment" rows="5" maxlength="800" placeholder="ご自由にお書きください"></textarea><div class="count"><span id="cnt">0</span>/800</div>
+      <label class="agree"><input type="checkbox" id="self"><span>この回答は、<b>お客様ご本人</b>のご意思によるものです。<em>必須</em></span></label>
+      <p class="err" id="err" role="alert" hidden></p>
+      <button type="submit" id="submit" class="primary">この内容で送信する</button></section>
+  </form>
+  <section id="done" class="card" hidden></section>
+</main>
+<footer class="wrap foot"><p>お客様の個人情報は、サービス品質の確認とご連絡以外には使いません。</p></footer>
+<script src="config.js"></script><script src="form.js"></script>
+</body></html>
