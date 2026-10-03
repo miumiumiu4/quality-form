@@ -29,8 +29,11 @@
       <fieldset class="q"><legend>ご家庭に当てはまるもの</legend><div class="chips" id="family"></div></fieldset>
       <div class="q"><label class="lab" for="age">年代</label><select id="age"></select></div>
       <div class="q"><label class="lab" for="next">次のお掃除のお知らせ</label><select id="next"></select></div>
-      <div class="q" id="ask-email"><label class="lab" for="email">お知らせの送り先メール（任意）</label><input type="email" id="email" inputmode="email" placeholder="example@mail.com" autocomplete="email"><p class="note">入力すると、お知らせのご案内にだけ使います。</p></div></section>
-    <section class="card" id="s-text"><h2><span class="no">4</span>ひとこと<span class="opt">任意</span></h2>
+</section>
+    <section class="card" id="s-mail"><h2><span class="no">4</span>メールアドレス<span class="req">必須</span></h2>
+      <div class="q" id="ask-email"><label class="lab" for="email">メールアドレス<em>必須</em></label><input type="email" id="email" inputmode="email" placeholder="example@mail.com" autocomplete="email" required>
+        <p class="note">ご回答の確認と、作業に気になる点があった時のご連絡にだけ使います。広告には使いません。<br>お名前・ご住所・お電話は、ご予約の情報とつながっているので、入力は要りません。</p></div></section>
+    <section class="card" id="s-text"><h2><span class="no">5</span>ひとこと<span class="opt">任意</span></h2>
       <label class="lab" for="comment">うれしかったこと、気になったこと、スタッフへのメッセージなど、ご自由に。</label>
       <textarea id="comment" rows="5" maxlength="800" placeholder="ご自由にお書きください"></textarea><div class="count"><span id="cnt">0</span>/800</div>
       <label class="agree"><input type="checkbox" id="self"><span>この回答は、<b>お客様ご本人</b>のご意思によるものです。<em>必須</em></span></label>

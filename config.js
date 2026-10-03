@@ -2,6 +2,7 @@
 window.QS_CONFIG = {
   COMPANY_NAME: "ありがとうエアコンお掃除専門店",
   GAS_URL: "https://script.google.com/macros/s/AKfycbwv-4YcUkJfx2C7olTie2zTXNhtejVPQZ0Fxr-zZM1D7pIL34bh3iVw_QWetTftTlZ8Sw/exec",          // フォームの受け口（Apps Script ウェブアプリ）のURL。空ならデモ（送信しても記録されません）
+  COMPANIES: { "C000": "https://script.google.com/macros/s/AKfycbwU7PoWIHOu_vA_Gekyp2G231Lqihi7POdeV2ksPP5JdiAZbRUuUAKZTbfIYneQVk_t/exec" },        // 会社番号 → その会社の窓口（Apps Script ウェブアプリ）のURL。例 { "C000": "https://script.google.com/macros/s/…/exec" }。メールのリンク（?c=C000&job=受付番号&t=合言葉）で開いた時、回答はその会社の窓口に入る
   REVIEW_URL: "https://search.google.com/local/writereview?placeid=ChIJfRGE1dNdGGARQcJB0K1HLPw",       // Googleマップの口コミ用リンク。ビジネスプロフィールの管理画面（パソコン）→「クチコミを読む」→「クチコミを増やす」でコピー
   CONTACT_LINE_URL: "", // 会社のLINEのURL（任意）
   CONTACT_EMAIL: "",    // 会社のメール（任意）

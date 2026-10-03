@@ -1,6 +1,10 @@
 (() => {
   const C = window.QS_CONFIG || {}, $ = id => document.getElementById(id);
   const P = new URLSearchParams(location.search), param = k => (P.get(k) || "").slice(0, 80);
+  // 予約とつながったリンク（?c=会社番号&job=受付番号&t=合言葉）：回答は、その会社の窓口に入る。担当・経路・金額・都道府県は、予約台帳から入るので聞かない
+  const LINK = { c: param("c"), job: param("job"), t: param("t") }, LINKED = !!(LINK.c && LINK.job && LINK.t && (C.COMPANIES || {})[LINK.c]);
+  const ENDPOINT = LINKED ? C.COMPANIES[LINK.c] : C.GAS_URL;
+  const postJson = (url, o) => fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(o) }).then(r => r.json());
   const ITEMS = [
     { k: "内部の汚れ・ニオイ確認", t: "エアコンの内部の汚れや、カビのようなニオイは、取れましたか？" },
     { k: "壁の汚れなし確認", t: "エアコンの下の壁や床に、汚れは残っていませんでしたか？（汚れがなければ「はい」）" },
@@ -56,12 +60,12 @@
   chips($("concerns"), CONCERNS, S.concerns); chips($("reasons"), REASONS, S.reasons); chips($("family"), FAMILY, S.family); chips($("visit"), ["今回が初めて", "2回目以降"], null, true);
   // 3. あなたについて（リンクで渡された項目は聞かない）
   sel($("src"), C.SOURCES || []); sel($("house"), C.HOUSE || []); sel($("area"), C.PREFS || []); sel($("age"), AGES); sel($("next"), NEXT);
-  if (param("src")) $("ask-src").hidden = true;
+  if (param("src") || LINKED) $("ask-src").hidden = true;
   if (param("house")) $("ask-house").hidden = true;
-  if (param("area")) $("ask-area").hidden = true;
+  if (param("area") || LINKED) $("ask-area").hidden = true;
   // 担当スタッフ：自由記入ではなく、選ぶ形。リンクに staff があれば聞かない。一覧は受け口（名寄せ表）から取る
   const sb = $("staffbox");
-  if (param("staff")) $("ask-staff").hidden = true;
+  if (param("staff") || LINKED) $("ask-staff").hidden = true;
   else {
     const s = document.createElement("select"); s.id = "staff"; sel(s, []); sb.appendChild(s); $("ask-staff").hidden = true;
     const fill = list => { if (!list.length) return; sel(s, list.map(x => x.name)); [...s.options].slice(1).forEach((o, i) => { o.value = list[i].id; }); s.options[0].textContent = "（わからない・選ばない）"; $("ask-staff").hidden = false; };
@@ -86,18 +90,18 @@
     if (S.nps < 0) return err("「すすめたい気持ち」（0〜10）を選んでください。");
     if (!$("self").checked) return err("「ご本人のご意思です」にチェックを入れてください。");
     const email = ($("email").value || "").trim();
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err("メールアドレスの形を確かめてください（入力しなくても大丈夫です）。");
+    if (!email) { $("email").scrollIntoView({ block: "center", behavior: "smooth" }); return err("メールアドレスを入力してください（ご回答の確認と、気になる点があった時のご連絡に使います）。"); }
+    if (!/^[^\s@,;<>"']+@[^\s@,;<>"']+\.[^\s@,;<>"']+$/.test(email)) return err("メールアドレスの形を確かめてください。");
     const v = k => (document.getElementById(k)?.value || "").trim();
-    const body = { kind: "submit", requestId: (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : String(Date.now()) + Math.random().toString(36).slice(2, 10)),
+    const body = { kind: LINKED ? "quality.submit" : "submit", jobId: LINKED ? LINK.job : undefined, token: LINKED ? LINK.t : undefined, requestId: (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : String(Date.now()) + Math.random().toString(36).slice(2, 10)),
       job: param("job"), staff: param("staff") || v("staff"), src: param("src") || v("src"), site: param("site"), house: param("house") || v("house"), area: param("area") || v("area"), amt: param("amt"),
       visit: S.visit, star: S.star, nps: S.nps, confirm: S.c, concerns: [...S.concerns], reasons: [...S.reasons], family: [...S.family], age: v("age"), next: v("next"),
       email, comment: $("comment").value.trim(), website: $("hp").value, ua: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "スマホ" : "パソコン" };
     const btn = $("submit"); btn.disabled = true; btn.textContent = "送信しています…";
     try {
       let id = "demo";
-      if (C.GAS_URL) {
-        const r = await fetch(C.GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
-        const j = await r.json(); if (!j.ok) throw new Error(j.message || "送信できませんでした"); id = j.id || "";
+      if (ENDPOINT) {
+        const j = await postJson(ENDPOINT, body); if (!j.ok) throw new Error(j.message || "送信できませんでした"); id = j.id || "";
       }
       done(id, body);
     } catch (e) { btn.disabled = false; btn.textContent = "この内容で送信する"; err("送信できませんでした。電波のよい所で、もう一度押してください。（" + (e.message || e) + "）"); }
@@ -116,10 +120,15 @@
         ${hasLink ? `<a class="linkbtn" id="gm" href="${C.REVIEW_URL}" target="_blank" rel="noopener">Googleマップで口コミを書く</a>` : `<p class="note">（口コミのリンクは、準備中です）</p>`}
         ${hasCm ? `<button type="button" class="linkbtn alt" id="cp">さきほどの「ひとこと」を、そのままコピーする</button><p class="note">コピーされるのは、お客様が書いた文章そのままです（貼り付けた後に、自由に直せます）。</p>` : ""}</div>
       ${contact ? `<div class="box" style="background:var(--card)"><h3>会社に直接お伝えしたいことがある方へ</h3>${contact}</div>` : ""}`;
-    const track = what => { if (C.GAS_URL && id && id !== "demo") fetch(C.GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ kind: what, id }), keepalive: true }).catch(() => {}); };
+    const track = what => { if (ENDPOINT && id && id !== "demo") fetch(ENDPOINT, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ kind: LINKED ? "quality." + what : what, id }), keepalive: true }).catch(() => {}); };
     const gm = $("gm"); if (gm) gm.addEventListener("click", () => track("click"));
     const cp = $("cp"); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(body.comment); cp.textContent = "コピーしました"; } catch (e) { cp.textContent = "コピーできませんでした。長押しでコピーしてください"; } };
     scrollTo({ top: 0, behavior: "smooth" });
   }
   progress();
+  // つながったリンクは、最初に確かめる（長く答えたあとで「リンクが正しくありません」にならないように）
+  if (LINKED) postJson(ENDPOINT, { kind: "quality.info", jobId: LINK.job, token: LINK.t }).then(j => {
+    if (!j.ok) { $("f").hidden = true; const m = $("intro"); m.innerHTML = "<h1>リンクを開けませんでした</h1><p></p>"; m.querySelector("p").textContent = j.message || "リンクが正しくありません。メールのリンクから開きなおしてください。"; }
+    else if (j.answered) { $("f").hidden = true; $("intro").innerHTML = "<h1>ご回答ありがとうございました</h1><p>この件は、すでにご回答をいただいています。</p>"; }
+  }).catch(() => {});
 })();
