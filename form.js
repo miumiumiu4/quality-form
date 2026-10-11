@@ -2,7 +2,14 @@
   const C = window.QS_CONFIG || {}, $ = id => document.getElementById(id);
   const P = new URLSearchParams(location.search), param = k => (P.get(k) || "").slice(0, 80);
   // 予約とつながったリンク（?c=会社番号&job=受付番号&t=合言葉）：回答は、その会社の窓口に入る。担当・経路・金額・都道府県は、予約台帳から入るので聞かない
-  const LINK = { c: param("c"), job: param("job"), t: param("t") }, LINKED = !!(LINK.c && LINK.job && LINK.t && (C.COMPANIES || {})[LINK.c]);
+  const LINK = { c: param("c"), job: param("job"), t: param("t"), e: param("e") };
+  // 合言葉をアドレス欄・履歴に残さない（2026-10-11 セキュリティ）。
+  // 再読み込み・タブの復元で消えないよう、このタブの中（sessionStorage）だけで覚える。ブックマークには残らない
+  try {
+    if (LINK.t) { sessionStorage.setItem("quality-form.link", JSON.stringify(LINK)); if (history.replaceState) history.replaceState(null, "", location.pathname); }
+    else { const saved = JSON.parse(sessionStorage.getItem("quality-form.link") || "null"); if (saved && saved.t) Object.assign(LINK, saved); }
+  } catch (e) { /* 保存が使えない時は、URL のまま */ }
+  const LINKED = !!(LINK.c && LINK.job && LINK.t && Object.prototype.hasOwnProperty.call(C.COMPANIES || {}, LINK.c));
   const ENDPOINT = LINKED ? C.COMPANIES[LINK.c] : C.GAS_URL;
   const postJson = (url, o) => fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(o) }).then(r => r.json());
   const ITEMS = [
@@ -93,7 +100,7 @@
     if (!email) { $("email").scrollIntoView({ block: "center", behavior: "smooth" }); return err("メールアドレスを入力してください（ご回答の確認と、気になる点があった時のご連絡に使います）。"); }
     if (!/^[^\s@,;<>"']+@[^\s@,;<>"']+\.[^\s@,;<>"']+$/.test(email)) return err("メールアドレスの形を確かめてください。");
     const v = k => (document.getElementById(k)?.value || "").trim();
-    const body = { kind: LINKED ? "quality.submit" : "submit", jobId: LINKED ? LINK.job : undefined, token: LINKED ? LINK.t : undefined, requestId: (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : String(Date.now()) + Math.random().toString(36).slice(2, 10)),
+    const body = { kind: LINKED ? "quality.submit" : "submit", jobId: LINKED ? LINK.job : undefined, token: LINKED ? LINK.t : undefined, exp: LINKED ? LINK.e : undefined, requestId: (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : String(Date.now()) + Math.random().toString(36).slice(2, 10)),
       job: param("job"), staff: param("staff") || v("staff"), src: param("src") || v("src"), site: param("site"), house: param("house") || v("house"), area: param("area") || v("area"), amt: param("amt"),
       visit: S.visit, star: S.star, nps: S.nps, confirm: S.c, concerns: [...S.concerns], reasons: [...S.reasons], family: [...S.family], age: v("age"), next: v("next"),
       email, comment: $("comment").value.trim(), website: $("hp").value, ua: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "スマホ" : "パソコン" };
@@ -127,7 +134,7 @@
   }
   progress();
   // つながったリンクは、最初に確かめる（長く答えたあとで「リンクが正しくありません」にならないように）
-  if (LINKED) postJson(ENDPOINT, { kind: "quality.info", jobId: LINK.job, token: LINK.t }).then(j => {
+  if (LINKED) postJson(ENDPOINT, { kind: "quality.info", jobId: LINK.job, token: LINK.t, exp: LINK.e }).then(j => {
     if (!j.ok) { $("f").hidden = true; const m = $("intro"); m.innerHTML = "<h1>リンクを開けませんでした</h1><p></p>"; m.querySelector("p").textContent = j.message || "リンクが正しくありません。メールのリンクから開きなおしてください。"; }
     else if (j.answered) { $("f").hidden = true; $("intro").innerHTML = "<h1>ご回答ありがとうございました</h1><p>この件は、すでにご回答をいただいています。</p>"; }
   }).catch(() => {});
