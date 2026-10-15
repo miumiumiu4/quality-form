@@ -100,10 +100,16 @@
     if (!email) { $("email").scrollIntoView({ block: "center", behavior: "smooth" }); return err("メールアドレスを入力してください（ご回答の確認と、気になる点があった時のご連絡に使います）。"); }
     if (!/^[^\s@,;<>"']+@[^\s@,;<>"']+\.[^\s@,;<>"']+$/.test(email)) return err("メールアドレスの形を確かめてください。");
     const v = k => (document.getElementById(k)?.value || "").trim();
+    // 保証の登録（ご連絡先）：2026-10-14 から必須。くわしい形の確かめは、お店の窓口（qualityContactCheck_）でも同じことをする
+    const dg = x => String(x || "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[^0-9]/g, "");
+    const contact = { name: v("cName"), phone: v("cPhone"), zip: v("cZip"), address: v("cAddr") };
+    const cMiss = [["cName", contact.name.length >= 2, "お名前を入れてください。"], ["cPhone", /^0\d{9,10}$/.test(dg(contact.phone)), "お電話番号を、市外局番から入れてください。"],
+      ["cZip", dg(contact.zip).length === 7, "郵便番号を7けたで入れてください。"], ["cAddr", contact.address.length >= 6, "ご住所を、番地まで入れてください。"]].find(x => !x[1]);
+    if (cMiss) { $(cMiss[0]).focus(); $(cMiss[0]).scrollIntoView({ block: "center", behavior: "smooth" }); return err("「保証の登録」：" + cMiss[2]); }
     const body = { kind: LINKED ? "quality.submit" : "submit", jobId: LINKED ? LINK.job : undefined, token: LINKED ? LINK.t : undefined, exp: LINKED ? LINK.e : undefined, requestId: (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : String(Date.now()) + Math.random().toString(36).slice(2, 10)),
       job: param("job"), staff: param("staff") || v("staff"), src: param("src") || v("src"), site: param("site"), house: param("house") || v("house"), area: param("area") || v("area"), amt: param("amt"),
       visit: S.visit, star: S.star, nps: S.nps, confirm: S.c, concerns: [...S.concerns], reasons: [...S.reasons], family: [...S.family], age: v("age"), next: v("next"),
-      email, comment: $("comment").value.trim(), website: $("hp").value, ua: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "スマホ" : "パソコン" };
+      email, contact, comment: $("comment").value.trim(), website: $("hp").value, ua: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "スマホ" : "パソコン" };
     const btn = $("submit"); btn.disabled = true; btn.textContent = "送信しています…";
     try {
       let id = "demo";
@@ -132,6 +138,16 @@
     const cp = $("cp"); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(body.comment); cp.textContent = "コピーしました"; } catch (e) { cp.textContent = "コピーできませんでした。長押しでコピーしてください"; } };
     scrollTo({ top: 0, behavior: "smooth" });
   }
+  // 郵便番号 → 住所の前半（お店の窓口が zipcloud に郵便番号だけを問い合わせる。届いたリンクのある時だけ）
+  { let auto = "";
+    $("cZip").addEventListener("input", () => {
+      const z = String($("cZip").value || "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[^0-9]/g, "");
+      if (z.length !== 7 || !LINKED) return;
+      postJson(ENDPOINT, { kind: "quality.zip", jobId: LINK.job, token: LINK.t, exp: LINK.e, zip: z }).then(j => {
+        const a = $("cAddr");
+        if (j && j.ok && j.address && (!a.value.trim() || a.value === auto)) { a.value = j.address; auto = j.address; a.focus(); a.setSelectionRange(a.value.length, a.value.length); }
+      }).catch(() => {});
+    }); }
   progress();
   // つながったリンクは、最初に確かめる（長く答えたあとで「リンクが正しくありません」にならないように）
   if (LINKED) postJson(ENDPOINT, { kind: "quality.info", jobId: LINK.job, token: LINK.t, exp: LINK.e }).then(j => {
