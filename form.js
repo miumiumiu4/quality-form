@@ -88,29 +88,49 @@
   }
   $("self").onchange = progress;
 
-  const err = m => { const e = $("err"); e.textContent = m; e.hidden = !m; if (m) e.scrollIntoView({ block: "center", behavior: "smooth" }); };
+  const err = (m, stay) => { const e = $("err"); e.textContent = m; e.hidden = !m; if (m && !stay) e.scrollIntoView({ block: "center", behavior: "smooth" }); };
+  // 入力の形が合わない時（2026-10-17 スマホで「送信を押しても何も起きない」に見えた対策）：
+  //   注意を、直す欄のすぐ下にも赤で出し、欄を赤く囲む。focus() はしない（キーボードが開いて注意が隠れるため）。欄を画面のまん中に出す。
+  //   ボタンの文字も3秒だけ変えて、押したことが見えるようにする。欄を直したら、その欄の注意は消える。
+  const BTN_LABEL = $("submit").textContent, NUDGE = "入力をご確認ください（赤い所）";
+  const fieldErrClear = () => { document.querySelectorAll(".ferr").forEach(x => x.remove()); document.querySelectorAll(".invalid").forEach(x => { x.classList.remove("invalid"); x.removeAttribute("aria-invalid"); }); };
+  const fail = (el, m) => {
+    err(m, true);
+    if (el) {
+      const isField = /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName), p = document.createElement("p");
+      p.className = "ferr"; p.textContent = m;
+      el.classList.add("invalid"); if (isField) el.setAttribute("aria-invalid", "true");
+      if (isField || el.tagName === "LABEL") el.insertAdjacentElement("afterend", p); else el.appendChild(p);
+      const evs = isField ? ["input", "change"] : ["click", "change"];
+      const clear = () => { p.remove(); el.classList.remove("invalid"); el.removeAttribute("aria-invalid"); evs.forEach(t => el.removeEventListener(t, clear)); };
+      evs.forEach(t => el.addEventListener(t, clear));
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    const b = $("submit"); b.textContent = NUDGE; b.classList.add("nudge"); clearTimeout(fail.t);
+    fail.t = setTimeout(() => { if (!b.disabled) b.textContent = BTN_LABEL; b.classList.remove("nudge"); }, 3000);
+  };
   $("f").addEventListener("submit", async ev => {
-    ev.preventDefault(); err("");
+    ev.preventDefault(); err(""); fieldErrClear();
     const miss = ITEMS.find(it => S.c[it.k] === undefined);
-    if (miss) { itemsBox.querySelector(`[data-k="${miss.k}"]`).scrollIntoView({ block: "center", behavior: "smooth" }); return err("「作業の確認」に、まだ答えていない項目があります。"); }
-    if (!S.star) return err("「全体の気持ち」の星を選んでください。");
-    if (S.nps < 0) return err("「すすめたい気持ち」（0〜10）を選んでください。");
-    if (!$("self").checked) return err("「ご本人のご意思です」にチェックを入れてください。");
+    if (miss) return fail(itemsBox.querySelector(`[data-k="${miss.k}"]`), "「作業の確認」に、まだ答えていない項目があります。");
+    if (!S.star) return fail($("stars").closest("fieldset"), "「全体の気持ち」の星を選んでください。");
+    if (S.nps < 0) return fail($("nps").closest("fieldset"), "「すすめたい気持ち」（0〜10）を選んでください。");
+    if (!$("self").checked) return fail($("self").closest("label"), "「ご本人のご意思です」にチェックを入れてください。");
     const email = ($("email").value || "").trim();
-    if (!email) { $("email").scrollIntoView({ block: "center", behavior: "smooth" }); return err("メールアドレスを入力してください（ご回答の確認と、気になる点があった時のご連絡に使います）。"); }
-    if (!/^[^\s@,;<>"']+@[^\s@,;<>"']+\.[^\s@,;<>"']+$/.test(email)) return err("メールアドレスの形を確かめてください。");
+    if (!email) return fail($("email"), "メールアドレスを入力してください（ご回答の確認と、気になる点があった時のご連絡に使います）。");
+    if (!/^[^\s@,;<>"']+@[^\s@,;<>"']+\.[^\s@,;<>"']+$/.test(email)) return fail($("email"), "メールアドレスの形を確かめてください。");
     const v = k => (document.getElementById(k)?.value || "").trim();
     // 保証の登録（ご連絡先）：2026-10-14 から必須。くわしい形の確かめは、お店の窓口（qualityContactCheck_）でも同じことをする
     const dg = x => String(x || "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[^0-9]/g, "");
     const contact = { name: v("cName"), phone: v("cPhone"), zip: v("cZip"), address: v("cAddr") };
     const cMiss = [["cName", contact.name.length >= 2, "お名前を入れてください。"], ["cPhone", /^0\d{9,10}$/.test(dg(contact.phone)), "お電話番号を、市外局番から入れてください。"],
       ["cZip", dg(contact.zip).length === 7, "郵便番号を7けたで入れてください。"], ["cAddr", contact.address.length >= 6, "ご住所を、番地まで入れてください。"]].find(x => !x[1]);
-    if (cMiss) { $(cMiss[0]).focus(); $(cMiss[0]).scrollIntoView({ block: "center", behavior: "smooth" }); return err("「保証の登録」：" + cMiss[2]); }
+    if (cMiss) return fail($(cMiss[0]), "「保証の登録」：" + cMiss[2]);
     const body = { kind: LINKED ? "quality.submit" : "submit", jobId: LINKED ? LINK.job : undefined, token: LINKED ? LINK.t : undefined, exp: LINKED ? LINK.e : undefined, requestId: (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : String(Date.now()) + Math.random().toString(36).slice(2, 10)),
       job: param("job"), staff: param("staff") || v("staff"), src: param("src") || v("src"), site: param("site"), house: param("house") || v("house"), area: param("area") || v("area"), amt: param("amt"),
       visit: S.visit, star: S.star, nps: S.nps, confirm: S.c, concerns: [...S.concerns], reasons: [...S.reasons], family: [...S.family], age: v("age"), next: v("next"),
       email, contact, comment: $("comment").value.trim(), website: $("hp").value, ua: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? "スマホ" : "パソコン" };
-    const btn = $("submit"); btn.disabled = true; btn.textContent = "送信しています…";
+    const btn = $("submit"); clearTimeout(fail.t); btn.classList.remove("nudge"); btn.disabled = true; btn.textContent = "送信しています…";
     try {
       let id = "demo";
       if (ENDPOINT) {
